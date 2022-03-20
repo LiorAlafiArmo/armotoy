@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/armosec/opa-utils v0.0.115
 	github.com/armosec/slacker v0.0.3
+	github.com/mitchellh/mapstructure v1.4.3
 	github.com/rivo/tview v0.0.0-20220307222120-9994674d60a8
 	github.com/stretchr/testify v1.7.0
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9

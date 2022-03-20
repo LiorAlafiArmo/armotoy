@@ -1,10 +1,14 @@
 package view
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/armosec/armotoy/common"
 	"github.com/armosec/armotoy/model"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"k8s.io/utils/strings/slices"
 )
 
 const (
@@ -44,6 +48,76 @@ func CreateTable(dm *model.DataModel, columnsAttributes map[string]common.Column
 	return table
 }
 
+func CreateTableFilterForm(columnsAttributes map[string]common.ColumnAttributes, filters *common.Filters, txt *tview.TextView) *tview.Form {
+	keys := make([]string, 0, len(columnsAttributes))
+	for k := range columnsAttributes {
+		if !columnsAttributes[k].Hidden {
+			keys = append(keys, k)
+		}
+	}
+	if filters.Equals == nil {
+		filters.Equals = make(map[string][]string)
+	}
+	form := tview.NewForm().
+		AddDropDown("Field", keys, 0, nil).
+		AddInputField("Value", "", 30, nil, nil)
+
+	// form.SetFocus()
+	form.AddButton("Add", func() {
+		ddown := form.GetFormItemByLabel("Field")
+		if ddown == nil {
+			return
+		}
+
+		dropdown, ok := ddown.(*tview.DropDown)
+		if ok {
+			_, column := dropdown.GetCurrentOption()
+			inp := form.GetFormItemByLabel("Value")
+			input, ok := inp.(*tview.InputField)
+			if !ok {
+				return
+			}
+			data, ok := filters.Equals[column]
+			if !ok {
+				data = make([]string, 0)
+			}
+			if len(input.GetText()) > 0 {
+				pos := slices.Index(data, input.GetText())
+				if pos > -1 {
+					data = append(data[:pos], data[pos+1:]...)
+
+				} else {
+					data = append(data, input.GetText())
+				}
+			}
+			if len(data) > 0 {
+				filters.Equals[column] = data
+			} else {
+				delete(filters.Equals, column)
+			}
+			input.SetText("")
+			SetFiltersText(txt, filters)
+
+		}
+
+	})
+	form.SetBorder(true).SetTitle("Enter some data").SetTitleAlign(tview.AlignLeft)
+	// form.AddButton("Filter", func() {
+
+	// })
+
+	return form
+}
+
+func SetFiltersText(txt *tview.TextView, filters *common.Filters) {
+	if txt != nil {
+		s := "Filters:\n"
+		for column := range filters.Equals {
+			s = fmt.Sprintf("%s%s: %s\n", s, column, strings.Join(filters.Equals[column], ", "))
+		}
+		txt.SetText(s)
+	}
+}
 func CreateHeader(dm *model.DataModel, columnsAttributes map[string]common.ColumnAttributes, table *tview.Table) {
 	for colName := range columnsAttributes {
 		if columnsAttributes[colName].Hidden {

@@ -5,6 +5,9 @@ import (
 	"github.com/rivo/tview"
 )
 
+type Filters struct {
+	Equals map[string][]string
+}
 type ColumnAttributes struct {
 	Hidden      bool
 	Color       func(value string) tcell.Color

@@ -194,7 +194,7 @@ func (pm *PostureModel) GetFrameworksTable() (*DataModel, error) {
 			pm.pr.SummaryDetails.Frameworks[i].Name,
 			string(pm.pr.SummaryDetails.Frameworks[i].GetStatus().Status()),
 			pm.pr.SummaryDetails.Frameworks[i].GetStatus().Info(),
-			fmt.Sprintf("%f", pm.pr.SummaryDetails.Frameworks[i].GetScore()),
+			fmt.Sprintf("%.2f", pm.pr.SummaryDetails.Frameworks[i].GetScore()),
 		}, Data: &pm.pr.SummaryDetails.Frameworks[i]}
 		datamodel.Data = append(datamodel.Data, element)
 	}

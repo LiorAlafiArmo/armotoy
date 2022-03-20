@@ -12,7 +12,12 @@ import (
 )
 
 func InitController(path, source, version string) (*Controller, error) {
-	controller := &Controller{StateMap: make(map[string]common.State), Selections: make(map[string][]Selection)}
+	controller := &Controller{StateMap: make(map[string]common.State),
+		Selections: make(map[string][]Selection),
+		StateFilters: map[string]common.Filters{
+			common.CONTEXT_FRAMEWORK: {Equals: make(map[string][]string)},
+			common.CONTEXT_CONTROLS:  {Equals: make(map[string][]string)},
+			common.CONTEXT_RESOURCE:  {Equals: make(map[string][]string)}}}
 
 	data, err := model.PostureModelInit(source, path, version)
 	if err != nil {
@@ -49,6 +54,16 @@ func InitController(path, source, version string) (*Controller, error) {
 	return controller, nil
 }
 
+func (controller *Controller) ResetFilters(section string) {
+	filters := controller.StateFilters[common.CONTEXT_FRAMEWORK]
+
+	for k := range filters.Equals {
+		delete(filters.Equals, k)
+	}
+
+	controller.StateFilters[common.CONTEXT_FRAMEWORK] = filters
+
+}
 func (controller *Controller) setupInputs() {
 	controller.app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 

@@ -11,14 +11,15 @@ type Integration struct {
 	Broadcaster broadcasters.IBroadcaster
 	Enabled     bool
 }
+
 type Controller struct {
 	model        *model.PostureModel
 	app          *tview.Application
 	CurrentState string
 	StateMap     map[string]common.State
 	root         *tview.Grid
-
-	Selections map[string][]Selection
+	StateFilters map[string]common.Filters
+	Selections   map[string][]Selection
 
 	DiggingSelection []Selection
 }

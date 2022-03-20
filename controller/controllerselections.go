@@ -45,6 +45,7 @@ func (c *Controller) RemoveSelection(key, value string) {
 
 func (c *Controller) ClearSelection(key string) {
 	delete(c.Selections, key)
+
 }
 
 func (c *Controller) GetSelection(key string) []Selection {
