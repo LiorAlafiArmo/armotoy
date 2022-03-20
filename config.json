@@ -1,0 +1,10 @@
+{
+    "integrations": {
+        "email": {
+            "recipients": [],
+            "smtp": {"host": "", "port": 0},
+            "auth": {"password":""},
+            "from":""
+        }
+    }
+}
