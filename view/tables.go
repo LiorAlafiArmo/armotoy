@@ -51,9 +51,7 @@ func CreateTable(dm *model.DataModel, columnsAttributes map[string]common.Column
 func CreateTableFilterForm(columnsAttributes map[string]common.ColumnAttributes, filters *common.Filters, txt *tview.TextView) *tview.Form {
 	keys := make([]string, 0, len(columnsAttributes))
 	for k := range columnsAttributes {
-		if !columnsAttributes[k].Hidden {
-			keys = append(keys, k)
-		}
+		keys = append(keys, k)
 	}
 	if filters.Equals == nil {
 		filters.Equals = make(map[string][]string)

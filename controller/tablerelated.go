@@ -17,6 +17,8 @@ import (
 
 const (
 	FRAMEWORK_TABLE_FOOTER_TEXT = "Ctrl+D - Dig into\tCtrl+B - Broadcast selection\tCtrl+E - Create an Exception from selection\tCtrl+S - Apply Filters\t]-switch focus to filters\tEsc-clear selections\tCtrl+A - show all(reset filters as well)"
+
+	RESOURCE_TABLE_FOOTER_TEXT = "Ctrl+D - Dig into\tCtrl+B - Broadcast selection\tCtrl+E - Create an Exception from selection\tCtrl+S - Apply Filters\t]-switch focus to filters\tEsc-clear selections\tCtrl+A - show all(reset filters as well)"
 )
 
 func (controller *Controller) CreateFrameworkPage(data *model.PostureModel) (*common.State, *tview.Table, error) {
@@ -64,12 +66,17 @@ func (controller *Controller) CreateFrameworkPage(data *model.PostureModel) (*co
 			return
 		}
 
-		controller.basicSelectionhandler(table, row, common.CONTEXT_FRAMEWORK, frameworkName, nil)
+		controller.basicSelectionhandler(table, row, common.CONTEXT_FRAMEWORK, frameworkName, table.GetCell(row, 0).GetReference())
 	})
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 
 		switch event.Key() {
 		case tcell.KeyCtrlE:
+			ex, err := controller.CreateExceptionPage()
+			if err == nil {
+				controller.AddState(ex)
+				controller.SetState(ex.Name)
+			}
 			return nil
 		case tcell.KeyCtrlB:
 			return nil
@@ -107,7 +114,7 @@ func (controller *Controller) CreateFrameworkPage(data *model.PostureModel) (*co
 		return event
 	})
 	footer := tview.NewTextView().SetDynamicColors(true)
-	footer.SetTextColor(tcell.ColorLightGoldenrodYellow).SetText(FRAMEWORK_TABLE_FOOTER_TEXT)
+	footer.SetTextColor(tcell.ColorLightGoldenrodYellow).SetText(RESOURCE_TABLE_FOOTER_TEXT)
 
 	filterForm := view.CreateTableFilterForm(defaultFrameworkColumns, &filters, selections)
 
@@ -120,7 +127,7 @@ func (controller *Controller) CreateFrameworkPage(data *model.PostureModel) (*co
 				footer.SetText("Tab-jump between fields\t]-switch focus to table")
 			} else {
 				controller.app.SetFocus(table)
-				footer.SetText(FRAMEWORK_TABLE_FOOTER_TEXT)
+				footer.SetText(RESOURCE_TABLE_FOOTER_TEXT)
 			}
 			return nil
 		}
@@ -166,7 +173,7 @@ func (controller *Controller) CreateControlPage(frameworks []string) (*common.St
 	// 	{Label: "Customized Config"},
 	// 	{Label: "Cloud Related"},
 
-	defaultControlColumns := map[string]common.ColumnAttributes{"Name": *common.DefaultColumnAttributes(0), "Status": *view.StatusColumnAttributes(1), "Severity": *view.SeverityColumnAttributes(2), "Status info": *common.DefaultColumnAttributes(3), "Score": *common.DefaultColumnAttributes(4), "Host Scan": *common.DefaultColumnAttributes(5), "Customized Config": *common.DefaultColumnAttributes(6), "Cloud Related": *common.DefaultColumnAttributes(7)}
+	defaultControlColumns := map[string]common.ColumnAttributes{"Name": *common.DefaultColumnAttributes(0), "Status": *view.StatusColumnAttributes(1), "Severity": *view.SeverityColumnAttributes(2), "Status info": *common.DefaultColumnAttributes(3), "Score": *common.DefaultColumnAttributes(4), "Host Scan": *common.DefaultColumnAttributes(5), "Customized Config": *common.DefaultColumnAttributes(6), "Cloud Related": *common.DefaultColumnAttributes(7), "ID": {Hidden: true, Color: nil}}
 
 	if len(filters.Equals) > 0 {
 		controls = controls.FilterByColumns(filters.Equals)
@@ -204,6 +211,11 @@ func (controller *Controller) CreateControlPage(frameworks []string) (*common.St
 
 		switch event.Key() {
 		case tcell.KeyCtrlE:
+			ex, err := controller.CreateExceptionPage()
+			if err == nil {
+				controller.AddState(ex)
+				controller.SetState(ex.Name)
+			}
 			return nil
 		case tcell.KeyCtrlB:
 			return nil
@@ -217,7 +229,8 @@ func (controller *Controller) CreateControlPage(frameworks []string) (*common.St
 			if !ok {
 				return nil
 			}
-			newState, _, err := controller.CreateResourcePage(frameworks, []string{control.ControlID}, map[string][]string{"Status": {"failed", "excluded"}})
+			controller.StateFilters[common.CONTEXT_RESOURCE].Equals["Status"] = []string{"failed", "excluded"}
+			newState, _, err := controller.CreateResourcePage(frameworks, []string{control.ControlID})
 			if err == nil {
 				controller.AddState(newState)
 				controller.SetState(newState.Name)
@@ -279,13 +292,13 @@ func (controller *Controller) CreateControlPage(frameworks []string) (*common.St
 	return state, table, nil
 }
 
-func (controller *Controller) CreateResourcePage(frameworks []string, controls []string, filters map[string][]string) (*common.State, *tview.Table, error) {
+func (controller *Controller) CreateResourcePage(frameworks []string, controls []string) (*common.State, *tview.Table, error) {
 	state := &common.State{
 		Name:  common.CONTEXT_RESOURCE,
 		Index: 2,
 	}
 
-	resources, err := controller.model.GetResourcesTable(frameworks, controls, filters)
+	resources, err := controller.model.GetResourcesTable(frameworks, controls)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -297,26 +310,33 @@ func (controller *Controller) CreateResourcePage(frameworks []string, controls [
 	// {Label: "Failed Controls"},
 	// {Label: "ResourceID", Hidden: true},
 	resources.SortByColumns([]string{"Namespace", "Kind", "Name", "Status"})
-	table := view.CreateTable(resources, map[string]common.ColumnAttributes{"Namespace": *common.DefaultColumnAttributes(0), "Kind": *common.DefaultColumnAttributes(1), "Name": *common.DefaultColumnAttributes(2), "Status": *view.StatusColumnAttributes(3), "k8s Object": *common.DefaultColumnAttributes(4), "Failed Controls": *common.DefaultColumnAttributes(5)})
+
+	defaultResourceColumns := map[string]common.ColumnAttributes{"Namespace": *common.DefaultColumnAttributes(0), "Kind": *common.DefaultColumnAttributes(1), "Name": *common.DefaultColumnAttributes(2), "Status": *view.StatusColumnAttributes(3), "k8s Object": *common.DefaultColumnAttributes(4), "Failed Controls": *common.DefaultColumnAttributes(5)}
+
+	selections := tview.NewTextView()
+	filters := controller.StateFilters[common.CONTEXT_RESOURCE]
+	view.SetFiltersText(selections, &filters)
+
+	filterForm := view.CreateTableFilterForm(defaultResourceColumns, &filters, selections)
+
+	if len(filters.Equals) > 0 {
+		resources = resources.FilterByColumns(filters.Equals)
+	}
+	table := view.CreateTable(resources, defaultResourceColumns)
+	footer := tview.NewTextView().SetDynamicColors(true)
+	footer.SetTextColor(tcell.ColorLightGoldenrodYellow).SetText("Ctrl+Y - inspect yaml\tCtrl+B - Broadcast selection\tCtrl+E - Create an Exception")
 
 	table.Select(0, 0).SetFixed(1, 1).SetDoneFunc(func(key tcell.Key) {
 		if key == tcell.KeyEscape {
 			view.ClearSelection(table)
 			controller.ClearSelection(common.CONTEXT_RESOURCE)
-			if newstate, _, err := controller.CreateResourcePage([]string{}, []string{}, map[string][]string{}); err == nil {
-				controller.AddState(newstate)
-				controller.SetState(newstate.Name)
-			}
+			controller.ResetFilters(common.CONTEXT_RESOURCE)
 		}
 		if key == tcell.KeyEnter {
 
 			table.SetSelectable(true, false)
 
 		}
-
-		// if key == tcell.KeyTab {
-
-		// }
 	}).SetSelectedFunc(func(row int, column int) {
 		if row == 0 {
 			return
@@ -329,12 +349,19 @@ func (controller *Controller) CreateResourcePage(frameworks []string, controls [
 		controller.basicSelectionhandler(table, row, common.CONTEXT_RESOURCE, resource.Raw.ResourceID, resource)
 	})
 	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyCtrlE {
-			return nil
-		} else if event.Key() == tcell.KeyCtrlB {
 
+		switch event.Key() {
+		case tcell.KeyCtrlE:
+			ex, err := controller.CreateExceptionPage()
+			if err == nil {
+				controller.AddState(ex)
+				controller.SetState(ex.Name)
+			}
 			return nil
-		} else if event.Key() == tcell.KeyCtrlY {
+		case tcell.KeyCtrlB:
+			return nil
+
+		case tcell.KeyCtrlY:
 			row, _ := table.GetSelection()
 			if row == 0 {
 				return nil
@@ -348,16 +375,54 @@ func (controller *Controller) CreateResourcePage(frameworks []string, controls [
 			controller.YAMLInspect(resource, controls)
 
 			return nil
+		case tcell.KeyCtrlA:
+			controller.ResetFilters(common.CONTEXT_RESOURCE)
+			view.ClearSelection(table)
+			controller.ClearSelection(common.CONTEXT_RESOURCE)
+
+			if newstate, _, err := controller.CreateResourcePage([]string{}, []string{}); err == nil {
+				controller.AddState(newstate)
+				controller.SetState(newstate.Name)
+			}
+
+			selections.SetText("")
+			return nil
+
 		}
+
 		return event
 
 	})
 
+	flex := view.CreateTableLayout(filterForm, selections, table, func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Rune() {
+		case ']':
+			if table.HasFocus() {
+				table.Blur()
+				controller.app.SetFocus(filterForm)
+				footer.SetText("Tab-jump between fields\t]-switch focus to table")
+			} else {
+				controller.app.SetFocus(table)
+				footer.SetText(FRAMEWORK_TABLE_FOOTER_TEXT)
+			}
+			return nil
+		}
+		switch event.Key() {
+		case tcell.KeyCtrlS:
+
+			state, _, err := controller.CreateResourcePage(frameworks, controls)
+			if err == nil {
+				controller.AddState(state)
+				controller.SetState(state.Name)
+			}
+		}
+		return event
+	})
+
 	// defaultColumnSettings := common.DefaultColumnAttributes()
 	// statusCol := StatusColumnAttributes()
-	state.Content = table
-	footer := tview.NewTextView().SetDynamicColors(true)
-	footer.SetTextColor(tcell.ColorLightGoldenrodYellow).SetText("Ctrl+Y - inspect yaml\tCtrl+B - Broadcast selection\tCtrl+E - Create an Exception")
+	state.Content = flex
+
 	state.Footer = footer
 	return state, table, nil
 }
@@ -404,6 +469,9 @@ func (controller *Controller) YAMLInspect(resource *model.ResourceReference, con
 					splits := specialSplit(path.FailedPath)
 
 					_, _, leaf = model.UpdateLeaf(nil, leaf, splits, "[red]", "", "[white]")
+
+					splits = specialSplit(path.FixPath.Path)
+					_, _, leaf = model.UpdateLeaf(nil, leaf, splits, "[green]", path.FixPath.Value, "[white]")
 				}
 
 			}

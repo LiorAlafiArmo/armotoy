@@ -24,7 +24,7 @@ func TestJSONLoading(t *testing.T) {
 		t.Errorf("could not load posture properly")
 	}
 
-	rs, _ := r.GetResourcesTable([]string{}, []string{}, map[string][]string{})
+	rs, _ := r.GetResourcesTable([]string{}, []string{})
 	col, i := rs.GetColumn("namespace")
 	if i < 0 {
 		t.Errorf("missing column")
@@ -47,7 +47,7 @@ func TestModelSingleFilter(t *testing.T) {
 		t.Errorf("could not load posture properly")
 	}
 
-	rs, _ := r.GetResourcesTable([]string{}, []string{}, map[string][]string{})
+	rs, _ := r.GetResourcesTable([]string{}, []string{})
 	col, i := rs.GetColumn("namespace")
 	if i < 0 {
 		t.Errorf("missing column")
@@ -70,7 +70,7 @@ func TestModelMultiFilter(t *testing.T) {
 		t.Errorf("could not load posture properly")
 	}
 
-	rs, _ := r.GetResourcesTable([]string{}, []string{}, map[string][]string{})
+	rs, _ := r.GetResourcesTable([]string{}, []string{})
 	col, i := rs.GetColumn("namespace")
 	if i < 0 {
 		t.Errorf("missing column")
@@ -93,7 +93,7 @@ func TestModelMultiSort(t *testing.T) {
 		t.Errorf("could not load posture properly")
 	}
 
-	rs, _ := r.GetResourcesTable([]string{}, []string{}, map[string][]string{})
+	rs, _ := r.GetResourcesTable([]string{}, []string{})
 
 	rs.SortByColumns([]string{"Namespace", "Kind", "Name", "Status"})
 	if e != nil || r == nil {

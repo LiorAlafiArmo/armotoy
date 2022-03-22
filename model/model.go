@@ -18,6 +18,10 @@ import (
 	"k8s.io/utils/strings/slices"
 )
 
+func (m *PostureModel) GetGitRegoStore() *gitregostore.GitRegoStore {
+	return m.gitrego
+}
+
 func UpdateLeaf(parent interface{}, o interface{}, keys []string, update string, leafValue string, reset string) (reflect.Kind, interface{}, interface{}) {
 	switch v := reflect.ValueOf(o); v.Kind() {
 	case reflect.Slice:
@@ -36,7 +40,11 @@ func UpdateLeaf(parent interface{}, o interface{}, keys []string, update string,
 	case reflect.Map:
 		tmp, _ := o.(map[string]interface{})
 		if len(keys) > 0 {
-			kind, _, leaf := UpdateLeaf(tmp, tmp[keys[0]], keys[1:], update, leafValue, reset)
+			key := keys[0]
+			if _, ok := tmp[keys[0]]; !ok {
+				key = update + keys[0]
+			}
+			kind, _, leaf := UpdateLeaf(tmp, tmp[key], keys[1:], update, leafValue, reset)
 			switch kind {
 			case reflect.Bool, reflect.String, reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Float32, reflect.Float64:
 				tmp[update+keys[0]] = leaf
@@ -50,6 +58,10 @@ func UpdateLeaf(parent interface{}, o interface{}, keys []string, update string,
 	default:
 
 		data := fmt.Sprintf("%s%v%s", update, o, reset)
+		if leafValue != "" {
+			data = fmt.Sprintf("%s%v%s", update, leafValue, reset)
+
+		}
 		return v.Kind(), parent, data
 	}
 }
@@ -118,7 +130,7 @@ func jsonPostureModelMaker(path, version string) (*PostureModel, error) {
 	return nil, fmt.Errorf("not implemented")
 
 }
-func (pm *PostureModel) GetResourcesTable(frameworks []string, controls []string, filters map[string][]string) (*DataModel, error) {
+func (pm *PostureModel) GetResourcesTable(frameworks []string, controls []string) (*DataModel, error) {
 	if pm.pr == nil {
 		return nil, fmt.Errorf("missing posture status")
 	}
@@ -165,7 +177,6 @@ func (pm *PostureModel) GetResourcesTable(frameworks []string, controls []string
 		}, Data: &resources[i]}
 		datamodel.Data = append(datamodel.Data, element)
 	}
-	datamodel.FilterByColumns(filters)
 	return datamodel, nil
 }
 
@@ -310,4 +321,16 @@ func (pm *PostureModel) AddControlSummaryToModel(datamodel *DataModel, control *
 	}
 
 	datamodel.Data = append(datamodel.Data, ctrl)
+}
+
+func (pm *PostureModel) GetCustomerGUID() string {
+	return pm.pr.GetCustomerGUID()
+}
+
+func (pm *PostureModel) GetCluster() string {
+	return pm.pr.GetClusterName()
+}
+
+func (pm *PostureModel) GetReportGUID() string {
+	return pm.pr.GetReportGUID()
 }

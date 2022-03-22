@@ -44,7 +44,7 @@ func InitController(path, source, version string) (*Controller, error) {
 	}
 
 	controller.AddState(controlsState)
-	resourceState, _, err := controller.CreateResourcePage([]string{}, []string{}, map[string][]string{})
+	resourceState, _, err := controller.CreateResourcePage([]string{}, []string{})
 	if err != nil {
 		return nil, err
 	}
