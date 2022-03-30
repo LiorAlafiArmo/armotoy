@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -11,13 +12,16 @@ import (
 	"github.com/rivo/tview"
 )
 
-func InitController(path, source, version string) (*Controller, error) {
+func InitController(path, source, version, configPath string) (*Controller, error) {
 	controller := &Controller{StateMap: make(map[string]common.State),
-		Selections: make(map[string][]Selection),
+		Selections:                      make(map[string][]Selection),
+		broadcasterColumnSelectionIndex: 0,
 		StateFilters: map[string]common.Filters{
 			common.CONTEXT_FRAMEWORK: {Equals: make(map[string][]string)},
 			common.CONTEXT_CONTROLS:  {Equals: make(map[string][]string)},
-			common.CONTEXT_RESOURCE:  {Equals: make(map[string][]string)}}}
+			common.CONTEXT_RESOURCE:  {Equals: make(map[string][]string)}},
+		IntegrationMessageOptions: common.BroadcastOptions{FrameworksEnabled: true, ControlsEnabled: true, ResourcesEnabled: true, Severity: "INFO"},
+		Data:                      make(map[string]view.Data)}
 
 	data, err := model.PostureModelInit(source, path, version)
 	if err != nil {
@@ -36,7 +40,6 @@ func InitController(path, source, version string) (*Controller, error) {
 		SetBorders(true)
 
 	controller.AddState(frameworkState)
-	controller.SetState(frameworkState.Name)
 
 	controlsState, _, err := controller.CreateControlPage([]string{})
 	if err != nil {
@@ -51,7 +54,15 @@ func InitController(path, source, version string) (*Controller, error) {
 
 	controller.AddState(resourceState)
 	controller.setupInputs()
+
+	controller.SetState(frameworkState.Name)
+	controller.LoadARMOTOYConfig(configPath)
+
 	return controller, nil
+}
+
+func (c *Controller) AddData(key string, m *model.DataModel, colAttrib map[string]common.ColumnAttributes) {
+	c.Data[key] = view.Data{ColumnAttributes: colAttrib, Model: m}
 }
 
 func (controller *Controller) ResetFilters(section string) {
@@ -121,4 +132,27 @@ func (controller *Controller) Start() {
 	if err := controller.app.SetRoot(controller.root, true).EnableMouse(true).Run(); err != nil {
 		panic(err)
 	}
+}
+
+func (c *Controller) LoadARMOTOYConfig(path string) error {
+	b, err := os.ReadFile(path)
+
+	if err != nil {
+		return err
+	}
+
+	config := &TUIConfigurations{}
+
+	if err := json.Unmarshal(b, config); err != nil {
+		return err
+	}
+
+	c.AddBroadcasters(config.Integrations)
+	c.IntegrationVMngr.Integrations = view.CreateIntegrations(c.Broadcasters)
+	if len(c.IntegrationVMngr.Integrations) == 0 {
+		c.IntegrationVMngr.CurrentIntegrationPos = -1
+	}
+	c.IntegrationVMngr.IntegrationFooter = tview.NewTextView().SetText("Ctrl+B - Broadcasting Settings\t[ - Previous integration\t] - Next integration")
+	c.HandleIntegrationSettings()
+	return nil
 }

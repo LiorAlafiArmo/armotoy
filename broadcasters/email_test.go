@@ -22,9 +22,8 @@ func TestEmailTest(t *testing.T) {
 	}
 	fmt.Printf(" %v\n", reflect.TypeOf(email))
 
-	concrete, _ := email.(*EMailBroadcaster)
-	concrete.RecipientsBySeverity["info"] = []EmailRecipient{{Email: "lalafi@armosec.io"}}
-	err = email.SendMessage("info", "test", "test")
+	email.AddTarget("lalafi@gmail.com")
+	err = email.SendMessage("INFO", "test", "test")
 	if err != nil {
 		t.Error(err)
 	}

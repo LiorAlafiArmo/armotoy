@@ -45,7 +45,7 @@ func (dm *DataModel) FilterByColumns(columns map[string][]string) *DataModel {
 
 func (dm *DataModel) isFilterable(columns map[string][]string, element *ElementModel) bool {
 	for columnName, values := range columns {
-		if _, indx := dm.GetColumn(columnName); indx > len(element.Fields) {
+		if _, indx := dm.GetColumn(columnName); indx > len(element.Fields) || indx < 0 {
 			return false
 
 			//not or to avoid element.Fields[indx] where indx oob

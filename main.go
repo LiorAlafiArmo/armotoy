@@ -18,7 +18,7 @@ func main() {
 		jsonPath = argsWithoutProg[0]
 	}
 
-	ctrler, err := controller.InitController(jsonPath, srcType, version)
+	ctrler, err := controller.InitController(jsonPath, srcType, version, "./config.json")
 	if err != nil {
 		fmt.Printf("unable to initialize controller due to: %s", err.Error())
 		os.Exit(1)

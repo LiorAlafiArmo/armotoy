@@ -21,9 +21,8 @@ type AcceptedStatuses struct {
 }
 
 type PostureModel struct {
-	pr        *v2.PostureReport
-	gitrego   *gitregostore.GitRegoStore
-	Resources []ResourceReference
+	pr      *v2.PostureReport
+	gitrego *gitregostore.GitRegoStore
 }
 
 type DataModel struct {

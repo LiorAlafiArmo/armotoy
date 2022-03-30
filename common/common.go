@@ -10,3 +10,7 @@ func (ca *ColumnAttributes) SetIndex(col int) *ColumnAttributes {
 	ca.Index = col
 	return ca
 }
+
+func (c *BroadcastOptions) IsValid() bool {
+	return c.ControlsEnabled || c.FrameworksEnabled || c.ResourcesEnabled
+}

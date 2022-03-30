@@ -1,7 +1,11 @@
 package view
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/armosec/armoapi-go/armotypes"
+	"github.com/armosec/armotoy/common"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -29,4 +33,79 @@ func CreateExceptionLayout(selections string, except *armotypes.PostureException
 		AddItem(review, 0, 11, false)
 	flex.SetDirection(tview.FlexRow)
 	return flex, fileinput, review
+}
+
+func CreatBroadcastingLayout(selections string, broadcastOptions *common.BroadcastOptions) (*tview.Flex, *tview.Form) {
+	selected := tview.NewTextView().SetText(selections)
+	selected.SetDynamicColors(true)
+	sendform := broadcastOptionForm(broadcastOptions)
+
+	flex := tview.NewFlex().
+		AddItem(selected, 0, 12, false).
+		AddItem(sendform, 0, 7, true)
+	flex.SetDirection(tview.FlexRow)
+
+	return flex, sendform
+}
+
+func CreateIntegrations(b []common.Integration) []IntegrationView {
+	integrationforms := make([]IntegrationView, 0)
+
+	for i := range b {
+
+		integrationView := IntegrationView{Title: tview.NewTextView(), Error: tview.NewTextView().SetTextColor(tcell.ColorRed), Info: tview.NewTextView(), Form: tview.NewForm()}
+		integrationView.Title.SetDynamicColors(true).SetText(fmt.Sprintf("[green][[white]\t  %s \t[green]][white]", b[i].Broadcaster.GetType()))
+		integrationView.Form.AddCheckbox("Active", b[i].IsActive, func(checked bool) {
+			b[i].IsActive = checked
+		})
+		integrationView.Form.AddInputField("Target", "", 40, nil, nil)
+		integrationView.Form.AddButton("Add/Remove target", func() {
+			inp := integrationView.Form.GetFormItemByLabel("Target")
+			targetinp, ok := inp.(*tview.InputField)
+			if ok {
+				pos := b[i].Broadcaster.FindTarget(targetinp.GetText())
+				var err error
+				if pos == -1 {
+					err = b[i].Broadcaster.AddTarget(targetinp.GetText())
+				} else {
+
+					err = b[i].Broadcaster.RemoveTarget(targetinp.GetText())
+				}
+				if err != nil {
+					integrationView.Error.SetTextColor(tcell.ColorRed).SetText(err.Error())
+				} else {
+					integrationView.Info.SetText(strings.Join(b[i].Broadcaster.GetTargets(), ","))
+					targetinp.SetText("")
+				}
+
+			} else {
+				integrationView.Error.SetText("not ok")
+			}
+
+		})
+
+		integrationforms = append(integrationforms, integrationView)
+
+	}
+
+	return integrationforms
+}
+
+func broadcastOptionForm(broadcastOptions *common.BroadcastOptions) *tview.Form {
+	sendform := tview.NewForm().AddDropDown("Severity", []string{"INFO", "WARNING", "HIGH", "CRITICAL"}, 0, func(option string, optionIndex int) {
+		broadcastOptions.Severity = option
+	}).
+		AddInputField("Title", "", 40, nil, func(text string) {
+			broadcastOptions.Title = text
+		}).
+		AddCheckbox(common.CONTEXT_FRAMEWORK, true, func(checked bool) {
+			broadcastOptions.FrameworksEnabled = checked
+		}).
+		AddCheckbox(common.CONTEXT_CONTROLS, true, func(checked bool) {
+			broadcastOptions.ControlsEnabled = checked
+		}).
+		AddCheckbox(common.CONTEXT_RESOURCE, true, func(checked bool) {
+			broadcastOptions.ResourcesEnabled = checked
+		})
+	return sendform
 }

@@ -177,6 +177,7 @@ func (pm *PostureModel) GetResourcesTable(frameworks []string, controls []string
 		}, Data: &resources[i]}
 		datamodel.Data = append(datamodel.Data, element)
 	}
+
 	return datamodel, nil
 }
 
@@ -303,7 +304,7 @@ func (pm *PostureModel) AddControlSummaryToModel(datamodel *DataModel, control *
 			control.Name,
 			string(control.GetStatus().Status()),
 			control.GetStatus().Info(),
-			fmt.Sprintf("%f", control.Score),
+			fmt.Sprintf("%.2f", control.Score),
 			postureapis.ControlSeverityToString(control.ScoreFactor),
 			fmt.Sprintf("%v", controlAttrib.HostScan),
 			fmt.Sprintf("%v", controlAttrib.CustomizedConfigurations),

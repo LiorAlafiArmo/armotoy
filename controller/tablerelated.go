@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/armosec/armotoy/common"
@@ -17,8 +18,11 @@ import (
 
 const (
 	FRAMEWORK_TABLE_FOOTER_TEXT = "Ctrl+D - Dig into\tCtrl+B - Broadcast selection\tCtrl+E - Create an Exception from selection\tCtrl+S - Apply Filters\t]-switch focus to filters\tEsc-clear selections\tCtrl+A - show all(reset filters as well)"
+	CONTROL_TABLE_FOOTER_TEXT   = "Ctrl+D - Dig into\tCtrl+K - Control Info.\tCtrl+B - Broadcast selection\tCtrl+E - Create an Exception from selection\tCtrl+S - Apply Filters\t]-switch focus to filters\tEsc-clear selections\tCtrl+A - show all(reset filters as well)"
 
 	RESOURCE_TABLE_FOOTER_TEXT = "Ctrl+D - Dig into\tCtrl+B - Broadcast selection\tCtrl+E - Create an Exception from selection\tCtrl+S - Apply Filters\t]-switch focus to filters\tEsc-clear selections\tCtrl+A - show all(reset filters as well)"
+
+	MAX_RULE_DISPLAY_SIZE = 550
 )
 
 func (controller *Controller) CreateFrameworkPage(data *model.PostureModel) (*common.State, *tview.Table, error) {
@@ -40,6 +44,8 @@ func (controller *Controller) CreateFrameworkPage(data *model.PostureModel) (*co
 	if len(filters.Equals) > 0 {
 		frameworks = frameworks.FilterByColumns(filters.Equals)
 	}
+	controller.Data[common.CONTEXT_FRAMEWORK] = view.Data{ColumnAttributes: defaultFrameworkColumns, Model: frameworks}
+
 	table := view.CreateTable(frameworks, defaultFrameworkColumns)
 
 	table.Select(0, 0).SetFixed(1, 1).SetDoneFunc(func(key tcell.Key) {
@@ -79,6 +85,8 @@ func (controller *Controller) CreateFrameworkPage(data *model.PostureModel) (*co
 			}
 			return nil
 		case tcell.KeyCtrlB:
+			controller.CreateBroadcastersPage()
+			controller.SetState(common.CONTEXT_INTEGRATION_MESSAGE_SETTINGS)
 			return nil
 		case tcell.KeyCtrlD:
 			row, col := table.GetSelection()
@@ -179,6 +187,7 @@ func (controller *Controller) CreateControlPage(frameworks []string) (*common.St
 		controls = controls.FilterByColumns(filters.Equals)
 	}
 	controls.SortByStatus("Status")
+	controller.Data[common.CONTEXT_CONTROLS] = view.Data{ColumnAttributes: defaultControlColumns, Model: controls}
 
 	table := view.CreateTable(controls, defaultControlColumns)
 
@@ -218,6 +227,9 @@ func (controller *Controller) CreateControlPage(frameworks []string) (*common.St
 			}
 			return nil
 		case tcell.KeyCtrlB:
+			controller.CreateBroadcastersPage()
+			controller.SetState(common.CONTEXT_INTEGRATION_MESSAGE_SETTINGS)
+
 			return nil
 		case tcell.KeyCtrlD:
 
@@ -238,6 +250,24 @@ func (controller *Controller) CreateControlPage(frameworks []string) (*common.St
 			}
 
 			return nil
+		case tcell.KeyCtrlK:
+			{
+				row, _ := table.GetSelection()
+				if row == 0 {
+					return nil
+				}
+				control, ok := table.GetCell(row, 0).GetReference().(*reportsummary.ControlSummary)
+				if !ok {
+					return nil
+				}
+				if newState, err := controller.CreateCtrlInfoPage(control.ControlID); err == nil {
+					controller.AddState(newState)
+					controller.SetState(newState.Name)
+				}
+
+				return nil
+
+			}
 		case tcell.KeyCtrlA:
 			controller.ResetFilters(common.CONTEXT_CONTROLS)
 			view.ClearSelection(table)
@@ -257,7 +287,7 @@ func (controller *Controller) CreateControlPage(frameworks []string) (*common.St
 
 	})
 	footer := tview.NewTextView().SetDynamicColors(true)
-	footer.SetText(FRAMEWORK_TABLE_FOOTER_TEXT)
+	footer.SetText(CONTROL_TABLE_FOOTER_TEXT)
 	filterForm := view.CreateTableFilterForm(defaultControlColumns, &filters, selections)
 	flex := view.CreateTableLayout(filterForm, selections, table, func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
@@ -268,7 +298,7 @@ func (controller *Controller) CreateControlPage(frameworks []string) (*common.St
 				footer.SetText("Tab-jump between fields\t]-switch focus to table")
 			} else {
 				controller.app.SetFocus(table)
-				footer.SetText(FRAMEWORK_TABLE_FOOTER_TEXT)
+				footer.SetText(CONTROL_TABLE_FOOTER_TEXT)
 			}
 			return nil
 		}
@@ -292,6 +322,36 @@ func (controller *Controller) CreateControlPage(frameworks []string) (*common.St
 	return state, table, nil
 }
 
+func (controller *Controller) CreateCtrlInfoPage(ctrlID string) (*common.State, error) {
+	state := &common.State{
+		Name:   common.CONTEXT_CONTROL_INFO,
+		Index:  1,
+		Menu:   view.MakeMenu(""),
+		Footer: tview.NewBox(),
+	}
+	if git := controller.model.GetGitRegoStore(); git != nil {
+		ctrl, err := git.GetOPAControlByID(ctrlID)
+		if err != nil {
+			return nil, err
+		}
+		txt := tview.NewTextView().SetWordWrap(true).SetWrap(true).SetDynamicColors(true)
+		mytxt := fmt.Sprintf("[yellow]Control ID:[white] %s\n[yellow]Name: [white]%s\n[yellow]Description: [white]%s\n[yellow]Rules:[white]\n", ctrlID, ctrl.Name, ctrl.Description)
+		for i := range ctrl.Rules {
+			rule := ctrl.Rules[i].Rule
+			if len(rule) > MAX_RULE_DISPLAY_SIZE {
+				rule = rule[:MAX_RULE_DISPLAY_SIZE] + "..."
+			}
+			mytxt = fmt.Sprintf("%s[yellow]%s[white]\n---------\n%s\n", mytxt, ctrl.Rules[i].Name, rule)
+
+		}
+		txt.SetText(mytxt)
+		state.Content = txt
+		return state, nil
+	}
+
+	return nil, fmt.Errorf("missing control information")
+}
+
 func (controller *Controller) CreateResourcePage(frameworks []string, controls []string) (*common.State, *tview.Table, error) {
 	state := &common.State{
 		Name:  common.CONTEXT_RESOURCE,
@@ -302,13 +362,7 @@ func (controller *Controller) CreateResourcePage(frameworks []string, controls [
 	if err != nil {
 		return nil, nil, err
 	}
-	// {Label: "Kind"},
-	// {Label: "Name"},
-	// {Label: "Status"},
-	// {Label: "Info"},
-	// {Label: "k8s Object"},
-	// {Label: "Failed Controls"},
-	// {Label: "ResourceID", Hidden: true},
+
 	resources.SortByColumns([]string{"Namespace", "Kind", "Name", "Status"})
 
 	defaultResourceColumns := map[string]common.ColumnAttributes{"Namespace": *common.DefaultColumnAttributes(0), "Kind": *common.DefaultColumnAttributes(1), "Name": *common.DefaultColumnAttributes(2), "Status": *view.StatusColumnAttributes(3), "k8s Object": *common.DefaultColumnAttributes(4), "Failed Controls": *common.DefaultColumnAttributes(5)}
@@ -322,6 +376,9 @@ func (controller *Controller) CreateResourcePage(frameworks []string, controls [
 	if len(filters.Equals) > 0 {
 		resources = resources.FilterByColumns(filters.Equals)
 	}
+
+	controller.Data[common.CONTEXT_RESOURCE] = view.Data{ColumnAttributes: defaultResourceColumns, Model: resources}
+
 	table := view.CreateTable(resources, defaultResourceColumns)
 	footer := tview.NewTextView().SetDynamicColors(true)
 	footer.SetTextColor(tcell.ColorLightGoldenrodYellow).SetText("Ctrl+Y - inspect yaml\tCtrl+B - Broadcast selection\tCtrl+E - Create an Exception")
@@ -359,6 +416,9 @@ func (controller *Controller) CreateResourcePage(frameworks []string, controls [
 			}
 			return nil
 		case tcell.KeyCtrlB:
+			controller.CreateBroadcastersPage()
+			controller.SetState(common.CONTEXT_INTEGRATION_MESSAGE_SETTINGS)
+
 			return nil
 
 		case tcell.KeyCtrlY:

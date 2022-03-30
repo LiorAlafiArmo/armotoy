@@ -32,3 +32,20 @@ func SelectionText(list []string, atype, s string) string {
 	}
 	return s
 }
+
+func ColumnActivationForm(title string, data *Data) *tview.Form {
+	form := tview.NewForm()
+	form.SetHorizontal(true)
+	for col, values := range data.ColumnAttributes {
+		name := col
+		if values.Label != "" {
+			name = values.Label
+		}
+
+		form.AddCheckbox(name, values.Selected, func(checked bool) {
+			values.Selected = checked
+			data.ColumnAttributes[col] = values
+		})
+	}
+	return form
+}

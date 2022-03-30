@@ -69,25 +69,7 @@ func (c *Controller) CreateAnException(selectedFrameworks []Selection, selectedC
 }
 
 func (c *Controller) CreateExceptionPage() (*common.State, error) {
-	selectedResources := c.GetSelection(common.CONTEXT_RESOURCE)
-	selectedFrameworks := c.GetSelection(common.CONTEXT_FRAMEWORK)
-	selectedControls := c.GetSelection(common.CONTEXT_CONTROLS)
-
-	s := ""
-
-	s = view.SelectionText(GetValuesFromSelection(selectedFrameworks), "frameworks", s)
-	s = view.SelectionText(GetValuesFromSelection(selectedControls), "controls", s)
-	if len(selectedResources) > 0 {
-		s = fmt.Sprintf("%sSelected resources:\n", s)
-		for i := range selectedResources {
-			r, ok := selectedResources[i].relatedObject.(*model.ResourceReference)
-			if ok {
-				s = fmt.Sprintf("%sAPI ver.: %s\t-\tNamespace: %s\t-\tKind: %s\t-\tName: %s\n", s, r.Raw.GetApiVersion(), r.Raw.GetNamespace(), r.Raw.GetKind(), r.Raw.GetName())
-
-			}
-
-		}
-	}
+	selectedResources, selectedFrameworks, selectedControls, s := c.GetSelectedItemsString()
 
 	flex, input, review := view.CreateExceptionLayout(s, nil)
 
@@ -96,8 +78,11 @@ func (c *Controller) CreateExceptionPage() (*common.State, error) {
 		case tcell.KeyCtrlS:
 			file := input.GetText()
 			ex := c.CreateAnException(selectedFrameworks, selectedControls, selectedResources)
+
 			if ex != nil && strings.HasSuffix(file, ".json") {
-				if b, err := json.Marshal(*ex); err == nil {
+				//currently kubescape accepts only list of acceptions so let's do that
+				tmplist := []armotypes.PostureExceptionPolicy{*ex}
+				if b, err := json.Marshal(tmplist); err == nil {
 					os.WriteFile(file, b, 0777)
 					review.SetText(string(b))
 				}
@@ -112,4 +97,27 @@ func (c *Controller) CreateExceptionPage() (*common.State, error) {
 	state.Footer = tview.NewTextView().SetText("ctrl+S - save exception")
 	return state, nil
 
+}
+
+func (c *Controller) GetSelectedItemsString() ([]Selection, []Selection, []Selection, string) {
+	selectedResources := c.GetSelection(common.CONTEXT_RESOURCE)
+	selectedFrameworks := c.GetSelection(common.CONTEXT_FRAMEWORK)
+	selectedControls := c.GetSelection(common.CONTEXT_CONTROLS)
+
+	s := ""
+
+	s = view.SelectionText(GetValuesFromSelection(selectedFrameworks), "frameworks", s)
+	s = view.SelectionText(GetValuesFromSelection(selectedControls), "controls", s)
+	if len(selectedResources) > 0 {
+		s = fmt.Sprintf("%s[yellow]Selected resources:[white]\n", s)
+		for i := range selectedResources {
+			r, ok := selectedResources[i].relatedObject.(*model.ResourceReference)
+			if ok {
+				s = fmt.Sprintf("%sAPI ver.: %s\t-\tNamespace: %s\t-\tKind: %s\t-\tName: %s\n", s, r.Raw.GetApiVersion(), r.Raw.GetNamespace(), r.Raw.GetKind(), r.Raw.GetName())
+
+			}
+
+		}
+	}
+	return selectedResources, selectedFrameworks, selectedControls, s
 }
