@@ -153,6 +153,6 @@ func (c *Controller) LoadARMOTOYConfig(path string) error {
 		c.IntegrationVMngr.CurrentIntegrationPos = -1
 	}
 	c.IntegrationVMngr.IntegrationFooter = tview.NewTextView().SetText("Ctrl+B - Broadcasting Settings\t[ - Previous integration\t] - Next integration")
-	c.HandleIntegrationSettings()
+	// c.HandleIntegrationSettings()
 	return nil
 }

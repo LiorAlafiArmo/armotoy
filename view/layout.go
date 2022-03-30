@@ -53,7 +53,7 @@ func CreateIntegrations(b []common.Integration) []IntegrationView {
 
 	for i := range b {
 
-		integrationView := IntegrationView{Title: tview.NewTextView(), Error: tview.NewTextView().SetTextColor(tcell.ColorRed), Info: tview.NewTextView(), Form: tview.NewForm()}
+		integrationView := IntegrationView{Title: tview.NewTextView(), Error: tview.NewTextView().SetTextColor(tcell.ColorRed), Info: tview.NewTextView(), Form: tview.NewForm(), Broadcaster: b[i].Broadcaster}
 		integrationView.Title.SetDynamicColors(true).SetText(fmt.Sprintf("[green][[white]\t  %s \t[green]][white]", b[i].Broadcaster.GetType()))
 		integrationView.Form.AddCheckbox("Active", b[i].IsActive, func(checked bool) {
 			b[i].IsActive = checked
@@ -63,18 +63,18 @@ func CreateIntegrations(b []common.Integration) []IntegrationView {
 			inp := integrationView.Form.GetFormItemByLabel("Target")
 			targetinp, ok := inp.(*tview.InputField)
 			if ok {
-				pos := b[i].Broadcaster.FindTarget(targetinp.GetText())
+				pos := integrationView.Broadcaster.FindTarget(targetinp.GetText())
 				var err error
 				if pos == -1 {
-					err = b[i].Broadcaster.AddTarget(targetinp.GetText())
+					err = integrationView.Broadcaster.AddTarget(targetinp.GetText())
 				} else {
 
-					err = b[i].Broadcaster.RemoveTarget(targetinp.GetText())
+					err = integrationView.Broadcaster.RemoveTarget(targetinp.GetText())
 				}
 				if err != nil {
 					integrationView.Error.SetTextColor(tcell.ColorRed).SetText(err.Error())
 				} else {
-					integrationView.Info.SetText(strings.Join(b[i].Broadcaster.GetTargets(), ","))
+					integrationView.Info.SetText(strings.Join(integrationView.Broadcaster.GetTargets(), ","))
 					targetinp.SetText("")
 				}
 

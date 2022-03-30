@@ -35,7 +35,7 @@ func (c *Controller) HandleIntegrationSettings() {
 		flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 			return c.IntegrationSettings(event, flex, &newState)
 		})
-
+		c.SetState(newState.Name)
 	}
 	c.AddState(&newState)
 }
@@ -146,6 +146,7 @@ func (c *Controller) CreateBroadcastersPage() {
 			return nil
 
 		case tcell.KeyCtrlK:
+			c.HandleIntegrationSettings()
 			c.SetState(common.CONTEXT_INTEGRATION_SETTINGS)
 			return nil
 
